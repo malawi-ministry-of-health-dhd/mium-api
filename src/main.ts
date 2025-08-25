@@ -5,6 +5,8 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  app.setGlobalPrefix('api');
+
   // 1️⃣ Configure Swagger
   const config = new DocumentBuilder()
     .setTitle('MAHIS integrated User Management(MIUM) Auth API')
@@ -17,7 +19,7 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
 
   // 3️⃣ Setup Swagger UI endpoint
-  SwaggerModule.setup('api', app, document);
+  SwaggerModule.setup('api/docs', app, document);
 
    await app.listen(process.env.PORT ?? 3000);
 }
