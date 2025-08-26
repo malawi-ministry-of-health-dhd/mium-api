@@ -31,6 +31,7 @@ export class UsersService {
     password: string,
     roleNames: string[] = ['USER'],
     programNames: string[] = [],
+    facilityCodes: string[] = [],
     profile?: UserProfileInput,
   ) {
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -42,6 +43,9 @@ export class UsersService {
     const programs = await this.prisma.program.findMany({
       where: { name: { in: programNames } },
     });
+    const facilities = await this.prisma.facility.findMany({
+      where: { facility_code: { in: facilityCodes } },
+    });
 
     return this.prisma.user.create({
       data: {
@@ -49,6 +53,7 @@ export class UsersService {
         password: hashedPassword,
         roles: { create: roles.map((r) => ({ roleId: r.id })) },
         programs: { create: programs.map((p) => ({ programId: p.id })) },
+        facilities: { create: facilities.map((f) => ({ facilityId: f.id })) },
         profile: {
           create: {
             firstName: profile?.firstName || '',
@@ -61,6 +66,7 @@ export class UsersService {
       include: {
         roles: { include: { role: true } },
         programs: { include: { program: true } },
+        facilities: { include: { facility: true } },
         profile: true,
       },
     });

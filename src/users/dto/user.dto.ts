@@ -50,6 +50,10 @@ export class CreateUserDto {
   @ApiProperty({ example: ['Program A'], required: false })
   programs?: string[];
 
+
+  @ApiProperty({ example: ['LL00012'], required: false })
+  facilities?: string[];
+
   @ApiProperty({ required: false, type: UserProfileDto })
   profile?: {
     firstName?: string;

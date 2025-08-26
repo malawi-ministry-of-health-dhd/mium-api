@@ -76,6 +76,7 @@ export class UsersController {
       dto.password,
       dto.roles,
       dto.programs,
+      dto.facilities,
       dto.profile, // Pass profile to service
     );
   }
