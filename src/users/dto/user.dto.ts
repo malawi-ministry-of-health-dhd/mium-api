@@ -1,6 +1,22 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-// Response DTO
+// -------------------------------------------
+// Response DTOs
+// -------------------------------------------
+export class UserProfileDto {
+  @ApiProperty({ example: 'John' })
+  firstName: string;
+
+  @ApiProperty({ example: 'Doe' })
+  lastName: string;
+
+  @ApiProperty({ example: 'Male' })
+  gender: string;
+
+  @ApiProperty({ example: '1990-01-01T00:00:00.000Z' })
+  dateOfBirth: Date;
+}
+
 export class UserDto {
   @ApiProperty({ example: 1 })
   id: number;
@@ -13,9 +29,14 @@ export class UserDto {
 
   @ApiProperty({ example: ['Program A'] })
   programs: string[];
+
+  @ApiProperty({ type: UserProfileDto, required: false })
+  profile?: UserProfileDto; // Include profile in user response
 }
 
+// -------------------------------------------
 // Input DTOs
+// -------------------------------------------
 export class CreateUserDto {
   @ApiProperty({ example: 'john' })
   username: string;
@@ -28,6 +49,14 @@ export class CreateUserDto {
 
   @ApiProperty({ example: ['Program A'], required: false })
   programs?: string[];
+
+  @ApiProperty({ required: false, type: UserProfileDto })
+  profile?: {
+    firstName?: string;
+    lastName?: string;
+    gender?: string;
+    dateOfBirth?: Date;
+  };
 }
 
 export class AssignRolesDto {

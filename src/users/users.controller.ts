@@ -7,7 +7,6 @@ import {
   Put,
   Delete,
   UseGuards,
-  Request,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -21,7 +20,14 @@ import {
   ApiBody,
   ApiParam,
 } from '@nestjs/swagger';
-import { CreateUserDto, UserDto, AssignRolesDto, AssignProgramsDto, UpdateUserDto, AssignFacilitiesDto } from './dto/user.dto';
+import {
+  CreateUserDto,
+  UserDto,
+  AssignRolesDto,
+  AssignProgramsDto,
+  UpdateUserDto,
+  AssignFacilitiesDto,
+} from './dto/user.dto';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -51,6 +57,27 @@ export class UsersController {
   @ApiResponse({ status: 200, description: 'User details', type: UserDto })
   async getUser(@Param('id') id: string) {
     return this.usersService.getUserById(+id);
+  }
+
+  // -----------------------------
+  // REGISTER NEW USER (with profile)
+  // -----------------------------
+  @Post('register')
+  @ApiOperation({ summary: 'Register a new user' })
+  @ApiBody({ type: CreateUserDto })
+  @ApiResponse({
+    status: 201,
+    description: 'User created successfully',
+    type: UserDto,
+  })
+  async register(@Body() dto: CreateUserDto) {
+    return this.usersService.createUser(
+      dto.username,
+      dto.password,
+      dto.roles,
+      dto.programs,
+      dto.profile, // Pass profile to service
+    );
   }
 
   // -----------------------------
@@ -88,16 +115,20 @@ export class UsersController {
   }
 
   // -----------------------------
-  // DELETE USER
+  // ASSIGN FACILITIES TO USER
   // -----------------------------
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
-  @Delete(':id')
-  @ApiOperation({ summary: 'Delete a user' })
-  @ApiParam({ name: 'id', type: Number, description: 'User ID' })
-  @ApiResponse({ status: 200, description: 'User deleted successfully' })
-  async deleteUser(@Param('id') id: string) {
-    return this.usersService.deleteUser(+id);
+  @Post('assign-facilities/:userId')
+  @ApiOperation({ summary: 'Assign facilities to a user' })
+  @ApiParam({ name: 'userId', type: Number, description: 'User ID' })
+  @ApiBody({ type: AssignFacilitiesDto })
+  @ApiResponse({ status: 200, description: 'Facilities assigned successfully' })
+  async assignFacilities(
+    @Param('userId') userId: string,
+    @Body('facilities') facilities: number[],
+  ) {
+    return this.usersService.assignFacilitiesToUser(+userId, facilities);
   }
 
   // -----------------------------
@@ -117,36 +148,15 @@ export class UsersController {
   }
 
   // -----------------------------
-  // REGISTER NEW USER
+  // DELETE USER
   // -----------------------------
-  @Post('register')
-  @ApiOperation({ summary: 'Register a new user' })
-  @ApiBody({ type: CreateUserDto })
-  @ApiResponse({ status: 201, description: 'User created successfully', type: UserDto })
-  async register(@Body() dto: CreateUserDto) {
-    return this.usersService.createUser(
-      dto.username,
-      dto.password,
-      dto.roles,
-      dto.programs,
-    );
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @Delete(':id')
+  @ApiOperation({ summary: 'Delete a user' })
+  @ApiParam({ name: 'id', type: Number, description: 'User ID' })
+  @ApiResponse({ status: 200, description: 'User deleted successfully' })
+  async deleteUser(@Param('id') id: string) {
+    return this.usersService.deleteUser(+id);
   }
-
-  // -----------------------------
-// ASSIGN FACILITIES TO USER
-// -----------------------------
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('ADMIN')
-@Post('assign-facilities/:userId')
-@ApiOperation({ summary: 'Assign facilities to a user' })
-@ApiParam({ name: 'userId', type: Number, description: 'User ID' })
-@ApiBody({ type: AssignFacilitiesDto })
-@ApiResponse({ status: 200, description: 'Facilities assigned successfully' })
-async assignFacilities(
-  @Param('userId') userId: string,
-  @Body('facilities') facilities: number[],
-) {
-  return this.usersService.assignFacilitiesToUser(+userId, facilities);
-}
-
 }
