@@ -17,6 +17,7 @@ model User {
   // Relations
   roles    UserRole[]
   programs UserProgram[]
+  facilities UserFacility[]
 }
 
 model Role {
@@ -61,4 +62,28 @@ model UserProgram {
   program Program @relation(fields: [programId], references: [id])
 
   @@id([userId, programId])
+}
+
+model UserFacility {
+  userId     Int
+  facilityId Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user     User     @relation(fields: [userId], references: [id])
+  facility Facility @relation(fields: [facilityId], references: [id])
+
+  @@id([userId, facilityId])
+}
+
+
+model Facility {
+  id                    Int       @id @default(autoincrement())
+  facility_code         String    @unique
+  facility_name         String
+  facility_code_mapping Json
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  users UserFacility[]
 }

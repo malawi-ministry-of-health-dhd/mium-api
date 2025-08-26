@@ -44,3 +44,8 @@ export class UpdateUserDto {
   @ApiProperty({ example: 'newpassword123' })
   password: string;
 }
+
+export class AssignFacilitiesDto {
+  @ApiProperty({ type: [Number], description: 'Array of Facility IDs to assign' })
+  facilities: number[];
+}

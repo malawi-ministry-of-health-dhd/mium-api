@@ -88,4 +88,32 @@ async updateUser(id: number, password: string) {
   return this.prisma.user.update({ where: { id }, data: { password: hashed } });
 }
 
+async assignFacilitiesToUser(userId: number, facilityIds: number[]) {
+  // Clear existing assignments (optional, depends on business logic)
+  await this.prisma.userFacility.deleteMany({
+    where: { userId },
+  });
+
+  // Create new assignments
+  const assignments = facilityIds.map((facilityId) => ({
+    userId,
+    facilityId,
+  }));
+
+  await this.prisma.userFacility.createMany({
+    data: assignments,
+    skipDuplicates: true,
+  });
+
+  return this.prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      facilities: {
+        include: { facility: true },
+      },
+    },
+  });
+}
+
+
 }
