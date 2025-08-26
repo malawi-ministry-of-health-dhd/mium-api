@@ -48,7 +48,7 @@ export class UsersService {
   // Get all users
 async getAllUsers() {
   return this.prisma.user.findMany({
-    include: { roles: { include: { role: true } }, programs: { include: { program: true } } },
+    include: { roles: { include: { role: true } }, programs: { include: { program: true } }, facilities: { include: { facility: true } } },
   });
 }
 

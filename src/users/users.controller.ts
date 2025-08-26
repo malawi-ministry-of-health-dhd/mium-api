@@ -21,7 +21,7 @@ import {
   ApiBody,
   ApiParam,
 } from '@nestjs/swagger';
-import { CreateUserDto, UserDto, AssignRolesDto, AssignProgramsDto, UpdateUserDto } from './dto/user.dto';
+import { CreateUserDto, UserDto, AssignRolesDto, AssignProgramsDto, UpdateUserDto, AssignFacilitiesDto } from './dto/user.dto';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -131,4 +131,22 @@ export class UsersController {
       dto.programs,
     );
   }
+
+  // -----------------------------
+// ASSIGN FACILITIES TO USER
+// -----------------------------
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('ADMIN')
+@Post('assign-facilities/:userId')
+@ApiOperation({ summary: 'Assign facilities to a user' })
+@ApiParam({ name: 'userId', type: Number, description: 'User ID' })
+@ApiBody({ type: AssignFacilitiesDto })
+@ApiResponse({ status: 200, description: 'Facilities assigned successfully' })
+async assignFacilities(
+  @Param('userId') userId: string,
+  @Body('facilities') facilities: number[],
+) {
+  return this.usersService.assignFacilitiesToUser(+userId, facilities);
+}
+
 }
