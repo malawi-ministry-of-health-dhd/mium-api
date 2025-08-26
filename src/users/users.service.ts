@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 
@@ -25,46 +25,96 @@ export class UsersService {
     });
   }
 
-  // Create new user with optional profile
+ // -----------------------
+  // Create user with validation
+  // -----------------------
   async createUser(
     username: string,
     password: string,
-    roleNames: string[] = ['USER'],
-    programNames: string[] = [],
+    roleNames?: string[],
+    programNames?: string[],
+    facilityCodes?: string[],
     profile?: UserProfileInput,
   ) {
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const roles = await this.prisma.role.findMany({
-      where: { name: { in: roleNames } },
-    });
+    let rolesData: { roleId: number }[] = [];
+    let programsData: { programId: number }[] = [];
+    let facilitiesData: { facilityId: number }[] = [];
 
-    const programs = await this.prisma.program.findMany({
-      where: { name: { in: programNames } },
-    });
+    // Validate roles
+    if (roleNames && roleNames.length > 0) {
+      const roles = await this.prisma.role.findMany({
+        where: { name: { in: roleNames } },
+      });
 
+      if (roles.length !== roleNames.length) {
+        const existingNames = roles.map(r => r.name);
+        const missing = roleNames.filter(r => !existingNames.includes(r));
+        throw new NotFoundException(`Roles not found: ${missing.join(', ')}`);
+      }
+
+      rolesData = roles.map(r => ({ roleId: r.id }));
+    }
+
+    // Validate programs
+    if (programNames && programNames.length > 0) {
+      const programs = await this.prisma.program.findMany({
+        where: { name: { in: programNames } },
+      });
+
+      if (programs.length !== programNames.length) {
+        const existingNames = programs.map(p => p.name);
+        const missing = programNames.filter(p => !existingNames.includes(p));
+        throw new NotFoundException(`Programs not found: ${missing.join(', ')}`);
+      }
+
+      programsData = programs.map(p => ({ programId: p.id }));
+    }
+
+    // Validate facilities
+    if (facilityCodes && facilityCodes.length > 0) {
+      const facilities = await this.prisma.facility.findMany({
+        where: { facility_code: { in: facilityCodes } },
+      });
+
+      if (facilities.length !== facilityCodes.length) {
+        const existingCodes = facilities.map(f => f.facility_code);
+        const missing = facilityCodes.filter(f => !existingCodes.includes(f));
+        throw new NotFoundException(`Facilities not found: ${missing.join(', ')}`);
+      }
+
+      facilitiesData = facilities.map(f => ({ facilityId: f.id }));
+    }
+
+    // Create user
     return this.prisma.user.create({
       data: {
         username,
         password: hashedPassword,
-        roles: { create: roles.map((r) => ({ roleId: r.id })) },
-        programs: { create: programs.map((p) => ({ programId: p.id })) },
-        profile: {
-          create: {
-            firstName: profile?.firstName || '',
-            lastName: profile?.lastName || '',
-            gender: profile?.gender || '',
-            dateOfBirth: profile?.dateOfBirth || new Date('1900-01-01'),
-          },
-        },
+        roles: { create: rolesData },
+        programs: { create: programsData },
+        facilities: { create: facilitiesData },
+        profile: profile
+          ? {
+              create: {
+                firstName: profile.firstName || '',
+                lastName: profile.lastName || '',
+                gender: profile.gender || '',
+                dateOfBirth: profile.dateOfBirth || new Date('1900-01-01'),
+              },
+            }
+          : undefined,
       },
       include: {
         roles: { include: { role: true } },
         programs: { include: { program: true } },
+        facilities: { include: { facility: true } },
         profile: true,
       },
     });
   }
+
 
   // Get all users
   async getAllUsers() {
