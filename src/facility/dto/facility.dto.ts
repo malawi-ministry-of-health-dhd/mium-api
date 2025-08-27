@@ -9,7 +9,11 @@ export class CreateFacilityDto {
 
   @ApiProperty({
     example: [
-      { url: 'https://dhis2.health.gov.mw/api/organisationUnits/zYfP0gkHRJH.json', code: 'zYfP0gkHRJH', system: 'DHIS2' },
+      {
+        url: 'https://dhis2.health.gov.mw/api/organisationUnits/zYfP0gkHRJH.json',
+        code: 'zYfP0gkHRJH',
+        system: 'DHIS2',
+      },
       { url: 'https://lmis.health.gov.mw', code: 'LL4040', system: 'OpenLMIS' },
     ],
   })
@@ -20,7 +24,7 @@ export class UpdateFacilityDto {
   @ApiProperty({ example: 'New Clinic Name', required: false })
   facility_name?: string;
 
-  @ApiProperty({ example: 'LL040008', required: false })
+  @ApiProperty({ example: 'BK170052', required: false })
   facility_code?: string;
 
   @ApiProperty({ example: [], required: false })

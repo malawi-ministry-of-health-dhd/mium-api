@@ -45,11 +45,10 @@ export class CreateUserDto {
   password: string;
 
   @ApiProperty({ example: ['USER'], required: false })
-  roles?: string[];
+  roles: string[];
 
   @ApiProperty({ example: ['Program A'], required: false })
   programs?: string[];
-
 
   @ApiProperty({ example: ['LL00012'], required: false })
   facilities?: string[];
@@ -79,6 +78,9 @@ export class UpdateUserDto {
 }
 
 export class AssignFacilitiesDto {
-  @ApiProperty({ type: [Number], description: 'Array of Facility IDs to assign' })
+  @ApiProperty({
+    type: [Number],
+    description: 'Array of Facility IDs to assign',
+  })
   facilities: number[];
 }
