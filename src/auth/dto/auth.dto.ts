@@ -19,7 +19,7 @@ export class RegisterDto {
   password: string;
 
   @ApiProperty({ example: ['USER'], required: false })
-  roles?: string[];
+  roles: string[];
 
   @ApiProperty({ example: ['Program A'], required: false })
   programs?: string[];

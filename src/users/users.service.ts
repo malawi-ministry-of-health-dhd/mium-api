@@ -29,13 +29,13 @@ export class UsersService {
     });
   }
 
- // -----------------------
+  // -----------------------
   // Create user with validation
   // -----------------------
   async createUser(
     username: string,
     password: string,
-    roleNames?: string[],
+    roleNames: string[],
     programNames?: string[],
     facilityCodes?: string[],
     profile?: UserProfileInput,
@@ -53,12 +53,12 @@ export class UsersService {
       });
 
       if (roles.length !== roleNames.length) {
-        const existingNames = roles.map(r => r.name);
-        const missing = roleNames.filter(r => !existingNames.includes(r));
+        const existingNames = roles.map((r) => r.name);
+        const missing = roleNames.filter((r) => !existingNames.includes(r));
         throw new NotFoundException(`Roles not found: ${missing.join(', ')}`);
       }
 
-      rolesData = roles.map(r => ({ roleId: r.id }));
+      rolesData = roles.map((r) => ({ roleId: r.id }));
     }
 
     // Validate programs
@@ -68,12 +68,14 @@ export class UsersService {
       });
 
       if (programs.length !== programNames.length) {
-        const existingNames = programs.map(p => p.name);
-        const missing = programNames.filter(p => !existingNames.includes(p));
-        throw new NotFoundException(`Programs not found: ${missing.join(', ')}`);
+        const existingNames = programs.map((p) => p.name);
+        const missing = programNames.filter((p) => !existingNames.includes(p));
+        throw new NotFoundException(
+          `Programs not found: ${missing.join(', ')}`,
+        );
       }
 
-      programsData = programs.map(p => ({ programId: p.id }));
+      programsData = programs.map((p) => ({ programId: p.id }));
     }
 
     // Validate facilities
@@ -83,14 +85,26 @@ export class UsersService {
       });
 
       if (facilities.length !== facilityCodes.length) {
-        const existingCodes = facilities.map(f => f.facility_code);
-        const missing = facilityCodes.filter(f => !existingCodes.includes(f));
-        throw new NotFoundException(`Facilities not found: ${missing.join(', ')}`);
+        const existingCodes = facilities.map((f) => f.facility_code);
+        const missing = facilityCodes.filter((f) => !existingCodes.includes(f));
+        throw new NotFoundException(
+          `Facilities not found: ${missing.join(', ')}`,
+        );
       }
 
-      facilitiesData = facilities.map(f => ({ facilityId: f.id }));
+      facilitiesData = facilities.map((f) => ({ facilityId: f.id }));
     }
 
+    if (
+      !(await this.memisUserService.createMemisUser({
+        password,
+        username,
+        roleNames,
+        facilityCodes,
+        profile,
+      }))
+    )
+      return;
     // Create user
     return this.prisma.user.create({
       data: {
@@ -118,7 +132,6 @@ export class UsersService {
       },
     });
   }
-
 
   // Get all users
   async getAllUsers() {
