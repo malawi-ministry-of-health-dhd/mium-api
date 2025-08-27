@@ -9,15 +9,21 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api');
 
+  app.enableCors({
+    origin: '*', // allow all
+  });
+
   // 1️⃣ Configure Swagger
   const config = new DocumentBuilder()
     .setTitle('MAHIS integrated User Management(MIUM) Auth API')
-    .setDescription('API documentation for NestJS app with Prisma, JWT, Roles, Programs')
+    .setDescription(
+      'API documentation for NestJS app with Prisma, JWT, Roles, Programs',
+    )
     .setVersion('1.0')
     .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }) // JWT auth
     .build();
 
-      // Serve static files
+  // Serve static files
   app.useStaticAssets(join(__dirname, '..', 'public'));
 
   // 2️⃣ Create document
@@ -26,8 +32,6 @@ async function bootstrap() {
   // 3️⃣ Setup Swagger UI endpoint
   SwaggerModule.setup('api/docs', app, document);
 
-   await app.listen(process.env.PORT ?? 3000);
+  await app.listen(process.env.PORT ?? 3000);
 }
 bootstrap();
-
-
