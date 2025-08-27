@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { MemisUserService } from '../memis/memis.users.service';
 import * as bcrypt from 'bcrypt';
 
 interface UserProfileInput {
@@ -11,13 +12,16 @@ interface UserProfileInput {
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private memisUserService: MemisUserService,
+  ) {}
 
   // Find user by username
   async findOne(username: string) {
     return this.prisma.user.findUnique({
       where: { username },
-      include: { 
+      include: {
         roles: { include: { role: true } },
         programs: { include: { program: true } },
         profile: true,
@@ -69,8 +73,8 @@ export class UsersService {
   // Get all users
   async getAllUsers() {
     return this.prisma.user.findMany({
-      include: { 
-        roles: { include: { role: true } }, 
+      include: {
+        roles: { include: { role: true } },
         programs: { include: { program: true } },
         facilities: { include: { facility: true } },
         profile: true,
@@ -82,8 +86,8 @@ export class UsersService {
   async getUserById(id: number) {
     return this.prisma.user.findUnique({
       where: { id },
-      include: { 
-        roles: { include: { role: true } }, 
+      include: {
+        roles: { include: { role: true } },
         programs: { include: { program: true } },
         facilities: { include: { facility: true } },
         profile: true,
@@ -94,16 +98,20 @@ export class UsersService {
   // Assign roles to user
   async assignRolesToUser(userId: number, roleNames: string[]) {
     await this.prisma.userRole.deleteMany({ where: { userId } });
-    const roles = await this.prisma.role.findMany({ where: { name: { in: roleNames } } });
-    const data = roles.map(r => ({ userId, roleId: r.id }));
+    const roles = await this.prisma.role.findMany({
+      where: { name: { in: roleNames } },
+    });
+    const data = roles.map((r) => ({ userId, roleId: r.id }));
     return this.prisma.userRole.createMany({ data });
   }
 
   // Assign programs to user
   async assignProgramsToUser(userId: number, programNames: string[]) {
     await this.prisma.userProgram.deleteMany({ where: { userId } });
-    const programs = await this.prisma.program.findMany({ where: { name: { in: programNames } } });
-    const data = programs.map(p => ({ userId, programId: p.id }));
+    const programs = await this.prisma.program.findMany({
+      where: { name: { in: programNames } },
+    });
+    const data = programs.map((p) => ({ userId, programId: p.id }));
     return this.prisma.userProgram.createMany({ data });
   }
 
@@ -115,7 +123,10 @@ export class UsersService {
   // Update user password
   async updateUser(id: number, password: string) {
     const hashed = await bcrypt.hash(password, 10);
-    return this.prisma.user.update({ where: { id }, data: { password: hashed } });
+    return this.prisma.user.update({
+      where: { id },
+      data: { password: hashed },
+    });
   }
 
   // Assign facilities to user
