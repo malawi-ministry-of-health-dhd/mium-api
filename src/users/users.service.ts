@@ -2,6 +2,8 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { MemisUserService } from '../memis/memis.users.service';
 import * as bcrypt from 'bcrypt';
+import { RolesService } from '../role/roles.service';
+import { ProgramsService } from '../programs/programs.service';
 
 interface UserProfileInput {
   firstName?: string;
@@ -15,6 +17,8 @@ export class UsersService {
   constructor(
     private prisma: PrismaService,
     private memisUserService: MemisUserService,
+    private rolesService: RolesService,
+    private programsService: ProgramsService,
   ) {}
 
   // Find user by username
@@ -46,33 +50,49 @@ export class UsersService {
     let programsData: { programId: number }[] = [];
     let facilitiesData: { facilityId: number }[] = [];
 
-    // Validate roles
+    // Validate and create roles if missing
     if (roleNames && roleNames.length > 0) {
-      const roles = await this.prisma.role.findMany({
+      let roles = await this.prisma.role.findMany({
         where: { name: { in: roleNames } },
       });
 
       if (roles.length !== roleNames.length) {
         const existingNames = roles.map((r) => r.name);
         const missing = roleNames.filter((r) => !existingNames.includes(r));
-        throw new NotFoundException(`Roles not found: ${missing.join(', ')}`);
+
+        // Create missing roles
+        for (const name of missing) {
+          await this.rolesService.createRole(name);
+        }
+
+        // Fetch all roles again after creation
+        roles = await this.prisma.role.findMany({
+          where: { name: { in: roleNames } },
+        });
       }
 
       rolesData = roles.map((r) => ({ roleId: r.id }));
     }
 
-    // Validate programs
+    // Validate and create programs if missing
     if (programNames && programNames.length > 0) {
-      const programs = await this.prisma.program.findMany({
+      let programs = await this.prisma.program.findMany({
         where: { name: { in: programNames } },
       });
 
       if (programs.length !== programNames.length) {
         const existingNames = programs.map((p) => p.name);
         const missing = programNames.filter((p) => !existingNames.includes(p));
-        throw new NotFoundException(
-          `Programs not found: ${missing.join(', ')}`,
-        );
+
+        // Create missing programs
+        for (const name of missing) {
+          await this.programsService.createProgram(name);
+        }
+
+        // Fetch all programs again after creation
+        programs = await this.prisma.program.findMany({
+          where: { name: { in: programNames } },
+        });
       }
 
       programsData = programs.map((p) => ({ programId: p.id }));
@@ -105,6 +125,7 @@ export class UsersService {
       }))
     )
       return;
+
     // Create user
     return this.prisma.user.create({
       data: {
