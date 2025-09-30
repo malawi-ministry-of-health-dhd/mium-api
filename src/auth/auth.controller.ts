@@ -73,7 +73,7 @@ export class AuthController {
     return {
       message: 'User registered successfully',
       user,
-      ...token,
+      token,
     };
   }
 
