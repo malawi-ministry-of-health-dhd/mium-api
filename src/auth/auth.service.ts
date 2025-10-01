@@ -27,15 +27,21 @@ export class AuthService {
     const payload = { username: user.username, sub: user.id, roles, programs };
     const key = process.env[`KEY`];
     if (!key) return 'Encryption key not set in environment variables';
-    const password = CryptoJS.AES.encrypt(pass, key).toString();
-    const username = CryptoJS.AES.encrypt(user.username, key).toString();
+
+    const auth = {
+      username: user.username,
+      password: pass,
+    };
+    const memis_auth = CryptoJS.AES.encrypt(
+      JSON.stringify(auth),
+      key,
+    ).toString();
 
     // const bytes = CryptoJS.AES.decrypt(password, key);
     // const test = bytes.toString(CryptoJS.enc.Utf8);
     return {
       access_token: this.jwtService.sign(payload),
-      username: username,
-      password,
+      memis_auth,
     };
   }
 }
