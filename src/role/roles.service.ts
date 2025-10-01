@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-// import { MemisClientService } from 'src/memis/memis-client.service';
+import { MemisClientService } from 'src/memis/memis-client.service';
 
 @Injectable()
 export class RolesService {
   constructor(
     private prisma: PrismaService,
-    // private memisClient: MemisClientService,
+    private memisClient: MemisClientService,
   ) {}
 
   async createRole(name: string) {
@@ -14,19 +14,25 @@ export class RolesService {
       data: { name },
     });
   }
-  // async createRolesFromMemis() {
-  //   const userRoles = await this.memisClient.getUserRoles();
-  //   for (const role of userRoles) {
-  //     this.prisma.role.upsert({
-  //       where: { name: role.name },
-  //       update: {},
-  //       create: { name: role.displayName },
-  //     });
-  //   }
-  //   return this.prisma.role.findMany();
-  // }
+  async createRolesFromMemis() {
+    const userRoles = await this.memisClient.getUserRoles();
+
+    for (const role of userRoles) {
+      await this.prisma.role.upsert({
+        where: { name: role.displayName },
+        update: {
+          // Optionally update memisId if the field exists in your schema
+          // memisId: role.id,
+        },
+        create: {
+          name: role.displayName,
+          // memisId: role.id, // Include if you have this field in your schema
+        },
+      });
+    }
+  }
   async getAllRoles() {
-    // await this.createRolesFromMemis();
+    await this.createRolesFromMemis();
     return this.prisma.role.findMany();
   }
 

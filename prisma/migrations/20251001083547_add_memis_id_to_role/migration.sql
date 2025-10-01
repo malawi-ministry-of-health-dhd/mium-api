@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE `Role` ADD COLUMN `memisId` VARCHAR(191) NULL;
