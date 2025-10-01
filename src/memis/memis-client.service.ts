@@ -94,4 +94,11 @@ export class MemisClientService extends BaseHttpClientService {
 
     return roleIds;
   }
+
+  async getUserRoles(): Promise<{ id: string }[]> {
+    const allRolesRes: AxiosResponse<{ userRoles: UserRole[] }> =
+      await this.axiosInstance.get(`/userRoles`);
+
+    return allRolesRes.data.userRoles;
+  }
 }
