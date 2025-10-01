@@ -15,6 +15,11 @@ export interface OrganisationUnit {
 export interface UserRole {
   id: string;
   name: string;
+  displayName: string;
+}
+interface MemisRole {
+  id: string;
+  displayName: string;
 }
 
 @Injectable()
@@ -95,10 +100,9 @@ export class MemisClientService extends BaseHttpClientService {
     return roleIds;
   }
 
-  async getUserRoles(): Promise<{ id: string }[]> {
+  async getUserRoles(): Promise<MemisRole[]> {
     const allRolesRes: AxiosResponse<{ userRoles: UserRole[] }> =
       await this.axiosInstance.get(`/userRoles`);
-
     return allRolesRes.data.userRoles;
   }
 }
