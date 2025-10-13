@@ -160,4 +160,14 @@ export class UsersController {
   async deleteUser(@Param('id') id: string) {
     return this.usersService.deleteUser(+id);
   }
+
+  @Get('check-username/:username')
+  async checkUsername(@Param('username') username: string) {
+    const exists = await this.usersService.usernameExists(username);
+    return {
+      username,
+      available: !exists,
+      exists,
+    };
+  }
 }

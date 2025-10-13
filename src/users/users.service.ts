@@ -237,4 +237,18 @@ export class UsersService {
       },
     });
   }
+
+  /**
+   * Check if username already exists in the database
+   * @param username - The username to validate
+   * @returns boolean - true if username exists, false if available
+   */
+  async usernameExists(username: string): Promise<boolean> {
+    const user = await this.prisma.user.findUnique({
+      where: { username },
+      select: { id: true },
+    });
+    
+    return user !== null;
+  }
 }
