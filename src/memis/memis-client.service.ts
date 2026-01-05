@@ -44,6 +44,19 @@ export class MemisClientService extends BaseHttpClientService {
       return null;
     }
   }
+  async putJson(url: string, obj: object): Promise<MemisResponse | null> {
+    try {
+      const response: AxiosResponse<MemisResponse> =
+        await this.axiosInstance.put(url, obj, {
+          headers: { 'Content-Type': 'application/json' },
+        });
+      this.logger.log(`Response from MEMIS: ${JSON.stringify(response.data)}`);
+      return response.data;
+    } catch (error) {
+      this.logger.error(`Failed to post to MEMIS: ${error}`);
+      return null;
+    }
+  }
 
   // ✅ typed: returns array of OrganisationUnit
   async getFacilityCode(facilityCodes: string[]) {
