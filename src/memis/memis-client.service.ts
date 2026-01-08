@@ -21,6 +21,11 @@ interface MemisRole {
   id: string;
   displayName: string;
 }
+interface MemisUser {
+  id: string;
+  username: string;
+  displayName: string;
+}
 
 @Injectable()
 export class MemisClientService extends BaseHttpClientService {
@@ -66,6 +71,14 @@ export class MemisClientService extends BaseHttpClientService {
       );
 
     return res.data.organisationUnits;
+  }
+  async findUserByUsername(username:string) {
+    const res: AxiosResponse<{ users: MemisUser[] }> =
+      await this.axiosInstance.get(
+        `/users?filter=username:eq:${username}&fields=id,username,displayName`,
+      );
+
+    return res.data.users;
   }
 
   // ✅ typed: always returns { id: string }[]
