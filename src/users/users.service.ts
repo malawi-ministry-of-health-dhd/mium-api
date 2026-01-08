@@ -47,6 +47,8 @@ export class UsersService {
   ) {
     const hashedPassword = await bcrypt.hash(password, 10);
 
+ 
+
     let rolesData: { roleId: number }[] = [];
     let programsData: { programId: number }[] = [];
     let facilitiesData: { facilityId: number }[] = [];
@@ -124,11 +126,10 @@ export class UsersService {
         facilityCodes,
         profile,
       }))
-    )
-      return;
+    ){return;}
 
     // Create user
-    return this.prisma.user.create({
+   const createdUser = await this.prisma.user.create({
       data: {
         username,
         password: hashedPassword,
@@ -153,6 +154,9 @@ export class UsersService {
         profile: true,
       },
     });
+
+
+    return createdUser;
   }
 
   // Get all users
