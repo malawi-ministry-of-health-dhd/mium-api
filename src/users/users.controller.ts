@@ -143,9 +143,11 @@ export class UsersController {
   @ApiResponse({ status: 200, description: 'User updated successfully' })
   async updateUser(
     @Param('id') id: string,
-    @Body('password') password: string,
+    @Body() dto: UpdateUserDto,
   ) {
-    return this.usersService.updateUser(+id, password);
+
+
+    return this.usersService.updateUser(+id, dto);
   }
 
   // -----------------------------
