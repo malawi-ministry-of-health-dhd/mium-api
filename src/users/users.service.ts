@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { MemisUserService } from '../memis/memis.users.service';
 import * as bcrypt from 'bcrypt';
 import { RolesService } from '../role/roles.service';
 import { ProgramsService } from '../programs/programs.service';
+import { UpdateUserDto } from './dto/user.dto';
 
 interface UserProfileInput {
   firstName?: string;
@@ -45,6 +46,8 @@ export class UsersService {
     profile?: UserProfileInput,
   ) {
     const hashedPassword = await bcrypt.hash(password, 10);
+
+ 
 
     let rolesData: { roleId: number }[] = [];
     let programsData: { programId: number }[] = [];
@@ -123,11 +126,10 @@ export class UsersService {
         facilityCodes,
         profile,
       }))
-    )
-      return;
+    ){return;}
 
     // Create user
-    return this.prisma.user.create({
+   const createdUser = await this.prisma.user.create({
       data: {
         username,
         password: hashedPassword,
@@ -152,6 +154,9 @@ export class UsersService {
         profile: true,
       },
     });
+
+
+    return createdUser;
   }
 
   // Get all users
@@ -205,12 +210,152 @@ export class UsersService {
   }
 
   // Update user password
-  async updateUser(id: number, password: string) {
-    const hashed = await bcrypt.hash(password, 10);
+ async updateUser(id: number, dto: UpdateUserDto) {
+    // Ensure user exists (also fetch username for Memis sync)
+    const existing = await this.prisma.user.findUnique({
+      where: { id },
+      include: { profile: true },
+    })
+    if (!existing) throw new NotFoundException('User not found')
+
+    // -----------------------
+    // Build user update data only for provided props
+    // -----------------------
+    const data: any = {}
+
+    // 1) Password
+    if (typeof dto.password === 'string' && dto.password.length > 0) {
+      data.password = await bcrypt.hash(dto.password, 10)
+    }
+
+    // 2) Roles (replace if provided)
+    if (Array.isArray(dto.roles)) {
+      // validate + create missing roles (same logic as createUser)
+      let roles = await this.prisma.role.findMany({
+        where: { name: { in: dto.roles } },
+      })
+
+      if (roles.length !== dto.roles.length) {
+        const existingNames = roles.map((r) => r.name)
+        const missing = dto.roles.filter((r) => !existingNames.includes(r))
+
+        for (const name of missing) {
+          await this.rolesService.createRole(name)
+        }
+
+        roles = await this.prisma.role.findMany({
+          where: { name: { in: dto.roles } },
+        })
+      }
+
+      data.roles = {
+        deleteMany: {}, // remove current
+        create: roles.map((r) => ({ roleId: r.id })),
+      }
+    }
+
+    // 3) Programs (replace if provided)
+    if (Array.isArray(dto.programs)) {
+      let programs = await this.prisma.program.findMany({
+        where: { name: { in: dto.programs } },
+      })
+
+      if (programs.length !== dto.programs.length) {
+        const existingNames = programs.map((p) => p.name)
+        const missing = dto.programs.filter((p) => !existingNames.includes(p))
+
+        for (const name of missing) {
+          await this.programsService.createProgram(name)
+        }
+
+        programs = await this.prisma.program.findMany({
+          where: { name: { in: dto.programs } },
+        })
+      }
+
+      data.programs = {
+        deleteMany: {},
+        create: programs.map((p) => ({ programId: p.id })),
+      }
+    }
+
+    // 4) Facilities (your DTO for update has facility codes in Create, but Update inherits it too)
+    //    If you keep dto.facilities as string[] (codes) then do this:
+    if (Array.isArray(dto.facilities)) {
+      const facilityCodes = dto.facilities
+
+      const facilities = await this.prisma.facility.findMany({
+        where: { facility_code: { in: facilityCodes } },
+      })
+
+      if (facilities.length !== facilityCodes.length) {
+        const existingCodes = facilities.map((f) => f.facility_code)
+        const missing = facilityCodes.filter((c) => !existingCodes.includes(c))
+        throw new NotFoundException(`Facilities not found: ${missing.join(', ')}`)
+      }
+
+      data.facilities = {
+        deleteMany: {},
+        create: facilities.map((f) => ({ facilityId: f.id })),
+      }
+    }
+
+    // 5) Profile (update only provided fields; create if not exists)
+    if (dto.profile) {
+      const profileUpdate: any = {}
+
+      if (dto.profile.firstName !== undefined) profileUpdate.firstName = dto.profile.firstName
+      if (dto.profile.lastName !== undefined) profileUpdate.lastName = dto.profile.lastName
+      if (dto.profile.gender !== undefined) profileUpdate.gender = dto.profile.gender
+      if (dto.profile.dateOfBirth !== undefined) profileUpdate.dateOfBirth = dto.profile.dateOfBirth
+
+      // Only attach if at least one field is present
+      if (Object.keys(profileUpdate).length > 0) {
+        data.profile = existing.profile
+          ? { update: profileUpdate }
+          : {
+              create: {
+                // safe defaults if some fields are missing on create
+                firstName: profileUpdate.firstName ?? '',
+                lastName: profileUpdate.lastName ?? '',
+                gender: profileUpdate.gender ?? '',
+                dateOfBirth: profileUpdate.dateOfBirth ?? new Date('1900-01-01'),
+              },
+            }
+      }
+    }
+
+    // Nothing to update
+    if (Object.keys(data).length === 0) {
+      throw new BadRequestException('No valid fields provided to update')
+    }
+
+    // -----------------------
+    // Optional: sync to Memis (only send what exists)
+    // -----------------------
+    // If your memis service supports an update method, use it.
+    // If not, adapt to your actual API.
+
+      await this.memisUserService.updateMemisUser(existing.username, {
+        password: dto.password, // send plain only if changed (some external systems need plain)
+        roleNames: Array.isArray(dto.roles) ? dto.roles : undefined,
+        facilityCodes: Array.isArray(dto.facilities) ? dto.facilities : undefined,
+        profile: dto.profile ? dto.profile : undefined,
+      })
+    
+    // -----------------------
+    // Update user in DB and return full object
+    // -----------------------
     return this.prisma.user.update({
       where: { id },
-      data: { password: hashed },
-    });
+      data,
+      include: {
+        roles: { include: { role: true } },
+        programs: { include: { program: true } },
+        facilities: { include: { facility: true } },
+        profile: true,
+      },
+    })
   }
 
   // Assign facilities to user
@@ -236,5 +381,19 @@ export class UsersService {
         profile: true,
       },
     });
+  }
+
+  /**
+   * Check if username already exists in the database
+   * @param username - The username to validate
+   * @returns boolean - true if username exists, false if available
+   */
+  async usernameExists(username: string): Promise<boolean> {
+    const user = await this.prisma.user.findUnique({
+      where: { username },
+      select: { id: true },
+    });
+    
+    return user !== null;
   }
 }

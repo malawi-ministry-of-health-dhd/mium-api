@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, OmitType, PartialType } from '@nestjs/swagger';
 
 // -------------------------------------------
 // Response DTOs
@@ -34,6 +34,21 @@ export class UserDto {
   profile?: UserProfileDto; // Include profile in user response
 }
 
+// For input (optional fields during create/update)
+export class UserProfileInputDto {
+  @ApiProperty({ required: false, example: 'John' })
+  firstName?: string;
+
+  @ApiProperty({ required: false, example: 'Doe' })
+  lastName?: string;
+
+  @ApiProperty({ required: false, example: 'Male' })
+  gender?: string;
+
+  @ApiProperty({ required: false, example: '1990-01-01T00:00:00.000Z' })
+  dateOfBirth?: Date;
+}
+
 // -------------------------------------------
 // Input DTOs
 // -------------------------------------------
@@ -53,14 +68,10 @@ export class CreateUserDto {
   @ApiProperty({ example: ['LL00012'], required: false })
   facilities?: string[];
 
-  @ApiProperty({ required: false, type: UserProfileDto })
-  profile?: {
-    firstName?: string;
-    lastName?: string;
-    gender?: string;
-    dateOfBirth?: Date;
-  };
+  @ApiProperty({ required: false, type: UserProfileInputDto })
+  profile?: UserProfileInputDto;
 }
+
 
 export class AssignRolesDto {
   @ApiProperty({ example: ['ADMIN', 'USER'] })
@@ -72,10 +83,13 @@ export class AssignProgramsDto {
   programs: string[];
 }
 
-export class UpdateUserDto {
-  @ApiProperty({ example: 'newpassword123' })
-  password: string;
-}
+/**
+ * UpdateUserDto:
+ * - allows updating everything that CreateUserDto accepts
+ * - EXCEPT username
+ * - makes all fields optional (PATCH semantics)
+ */
+export class UpdateUserDto extends PartialType(OmitType(CreateUserDto, ['username'] as const)) {}
 
 export class AssignFacilitiesDto {
   @ApiProperty({

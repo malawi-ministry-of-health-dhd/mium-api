@@ -143,9 +143,11 @@ export class UsersController {
   @ApiResponse({ status: 200, description: 'User updated successfully' })
   async updateUser(
     @Param('id') id: string,
-    @Body('password') password: string,
+    @Body() dto: UpdateUserDto,
   ) {
-    return this.usersService.updateUser(+id, password);
+
+
+    return this.usersService.updateUser(+id, dto);
   }
 
   // -----------------------------
@@ -159,5 +161,15 @@ export class UsersController {
   @ApiResponse({ status: 200, description: 'User deleted successfully' })
   async deleteUser(@Param('id') id: string) {
     return this.usersService.deleteUser(+id);
+  }
+
+  @Get('check-username/:username')
+  async checkUsername(@Param('username') username: string) {
+    const exists = await this.usersService.usernameExists(username);
+    return {
+      username,
+      available: !exists,
+      exists,
+    };
   }
 }
