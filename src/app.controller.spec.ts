@@ -15,8 +15,14 @@ describe('AppController', () => {
   });
 
   describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(appController.getHello()).toBe('Hello World!');
+    it('should render the landing page', () => {
+      const response = { send: jest.fn() };
+
+      appController.getLanding(response as any);
+
+      expect(response.send).toHaveBeenCalledWith(
+        expect.stringContaining('Welcome to MIUM API'),
+      );
     });
   });
 });

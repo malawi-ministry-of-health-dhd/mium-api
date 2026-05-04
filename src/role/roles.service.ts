@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { MemisClientService } from 'src/memis/memis-client.service';
+import { MemisClientService } from '../memis/memis-client.service';
 
 @Injectable()
 export class RolesService {
