@@ -6,6 +6,7 @@ import {
   Param,
   Put,
   Delete,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
@@ -43,8 +44,8 @@ export class UsersController {
   @Get()
   @ApiOperation({ summary: 'Get all users' })
   @ApiResponse({ status: 200, description: 'List of users', type: [UserDto] })
-  async getAllUsers() {
-    return this.usersService.getAllUsers();
+  async getAllUsers(@Query('search_string') searchString?: string) {
+    return this.usersService.getAllUsers(searchString);
   }
 
   // -----------------------------
@@ -78,6 +79,7 @@ export class UsersController {
       dto.programs,
       dto.facilities,
       dto.profile, // Pass profile to service
+      dto.userGroups,
     );
   }
 
