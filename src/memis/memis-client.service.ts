@@ -17,6 +17,20 @@ export interface UserRole {
   name: string;
   displayName: string;
 }
+
+export interface MemisUserGroupUser {
+  id: string;
+  username?: string;
+  displayName?: string;
+}
+
+export interface MemisUserGroup {
+  id: string;
+  name?: string;
+  displayName?: string;
+  users?: MemisUserGroupUser[];
+}
+
 interface MemisRole {
   id: string;
   displayName: string;
@@ -72,7 +86,7 @@ export class MemisClientService extends BaseHttpClientService {
 
     return res.data.organisationUnits;
   }
-  async findUserByUsername(username:string) {
+  async findUserByUsername(username: string) {
     const res: AxiosResponse<{ users: MemisUser[] }> =
       await this.axiosInstance.get(
         `/users?filter=username:eq:${username}&fields=id,username,displayName`,
@@ -130,5 +144,31 @@ export class MemisClientService extends BaseHttpClientService {
     const allRolesRes: AxiosResponse<{ userRoles: UserRole[] }> =
       await this.axiosInstance.get(`/userRoles`);
     return allRolesRes.data.userRoles;
+  }
+
+  async getUserGroups(): Promise<MemisUserGroup[]> {
+    const userGroupsRes: AxiosResponse<{ userGroups: MemisUserGroup[] }> =
+      await this.axiosInstance.get(`/userGroups`, {
+        params: {
+          fields: 'id,name,displayName',
+        },
+      });
+
+    return userGroupsRes.data.userGroups ?? [];
+  }
+
+  async getUserIdsFromUserGroups(): Promise<string[]> {
+    const userGroups = await this.getUserGroups();
+    const userIds = new Set<string>();
+
+    for (const group of userGroups) {
+      for (const user of group.users ?? []) {
+        if (user.id) {
+          userIds.add(user.id);
+        }
+      }
+    }
+
+    return [...userIds];
   }
 }

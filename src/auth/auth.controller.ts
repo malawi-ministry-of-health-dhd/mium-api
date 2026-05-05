@@ -10,7 +10,7 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 import { LoginDto, RegisterDto, AuthResponseDto } from './dto/auth.dto';
-import { UserDto } from 'src/users/dto/user.dto';
+import { UserDto } from '../users/dto/user.dto';
 
 @ApiTags('Auth')
 @Controller('auth')

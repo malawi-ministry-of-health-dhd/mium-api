@@ -5,7 +5,7 @@ import { UsersController } from './users.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 import { RolesService } from '../role/roles.service';
 import { ProgramsService } from '../programs/programs.service';
-import { MemisClientService } from 'src/memis/memis-client.service';
+import { MemisClientService } from '../memis/memis-client.service';
 
 @Module({
   imports: [PrismaModule, MemisModule],

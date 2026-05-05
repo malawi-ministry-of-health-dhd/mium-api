@@ -100,3 +100,8 @@ Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
 # run migration
 
 - npx prisma migrate deploy
+
+# seed
+
+- npm run prisma:seed-admin-user
+- npm run prisma:seed-facilities-online
