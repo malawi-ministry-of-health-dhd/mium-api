@@ -150,7 +150,7 @@ export class MemisClientService extends BaseHttpClientService {
     const userGroupsRes: AxiosResponse<{ userGroups: MemisUserGroup[] }> =
       await this.axiosInstance.get(`/userGroups`, {
         params: {
-          fields: 'id,name,displayName,users[id,username,displayName]',
+          fields: 'id,name,displayName',
         },
       });
 
