@@ -17,6 +17,11 @@ export class UserProfileDto {
   dateOfBirth: Date;
 }
 
+export class UserGroupDto {
+  @ApiProperty({ example: 'UUID' })
+  id: string;
+}
+
 export class UserDto {
   @ApiProperty({ example: 1 })
   id: number;
@@ -29,6 +34,9 @@ export class UserDto {
 
   @ApiProperty({ example: ['Program A'] })
   programs: string[];
+
+  @ApiProperty({ example: [{ id: 'UUID' }], type: [UserGroupDto] })
+  userGroups: UserGroupDto[];
 
   @ApiProperty({ type: UserProfileDto, required: false })
   profile?: UserProfileDto; // Include profile in user response
@@ -49,6 +57,11 @@ export class UserProfileInputDto {
   dateOfBirth?: Date;
 }
 
+export class UserGroupInputDto {
+  @ApiProperty({ example: 'UUID' })
+  id: string;
+}
+
 // -------------------------------------------
 // Input DTOs
 // -------------------------------------------
@@ -67,6 +80,13 @@ export class CreateUserDto {
 
   @ApiProperty({ example: ['LL00012'], required: false })
   facilities?: string[];
+
+  @ApiProperty({
+    example: [{ id: 'UUID' }],
+    required: false,
+    type: [UserGroupInputDto],
+  })
+  userGroups?: UserGroupInputDto[];
 
   @ApiProperty({ required: false, type: UserProfileInputDto })
   profile?: UserProfileInputDto;

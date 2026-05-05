@@ -13,6 +13,7 @@ interface CreateMemisUserDto {
   roleNames: string[];
   profile?: UserProfile;
   facilityCodes?: string[];
+  userGroups?: { id: string }[];
 }
 
 interface MemisResponse {
@@ -30,7 +31,7 @@ export class MemisUserService {
   ) {}
 
   async createMemisUser(obj: CreateMemisUserDto): Promise<boolean> {
-    const { password, username, roleNames, profile, facilityCodes } = obj;
+    const { password, username, roleNames, profile, facilityCodes, userGroups } = obj;
     if (!facilityCodes) return false;
 
     const facilityCode = await this.memisClient.getFacilityCode(facilityCodes);
@@ -45,6 +46,7 @@ export class MemisUserService {
       firstName: profile?.firstName ?? '',
       surname: profile?.lastName ?? '',
       userRoles,
+      userGroups: userGroups ?? [],
       organisationUnits: facilityCode,
     };
 
@@ -113,6 +115,10 @@ export class MemisUserService {
       );
       if (!facilityCode) return false; // or skip; your choice
       payload.organisationUnits = facilityCode;
+    }
+
+    if (Array.isArray(obj.userGroups)) {
+      payload.userGroups = obj.userGroups;
     }
 
     // If nothing to update, avoid calling MEMIS

@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { MemisUserService } from '../memis/memis.users.service';
+import type { Prisma } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { RolesService } from '../role/roles.service';
 import { ProgramsService } from '../programs/programs.service';
@@ -11,6 +12,10 @@ interface UserProfileInput {
   lastName?: string;
   gender?: string;
   dateOfBirth?: Date;
+}
+
+interface UserGroupInput {
+  id: string;
 }
 
 @Injectable()
@@ -44,6 +49,7 @@ export class UsersService {
     programNames?: string[],
     facilityCodes?: string[],
     profile?: UserProfileInput,
+    userGroups?: UserGroupInput[],
   ) {
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -125,6 +131,7 @@ export class UsersService {
         roleNames,
         facilityCodes,
         profile,
+        userGroups,
       }))
     ){return;}
 
@@ -133,6 +140,7 @@ export class UsersService {
       data: {
         username,
         password: hashedPassword,
+        userGroups: (userGroups ?? []) as unknown as Prisma.InputJsonValue,
         roles: { create: rolesData },
         programs: { create: programsData },
         facilities: { create: facilitiesData },
@@ -160,8 +168,19 @@ export class UsersService {
   }
 
   // Get all users
-  async getAllUsers() {
+  async getAllUsers(searchString?: string) {
+    const search = searchString?.trim();
+
     return this.prisma.user.findMany({
+      where: search
+        ? {
+            OR: [
+              { username: { contains: search } },
+              { profile: { firstName: { contains: search } } },
+              { profile: { lastName: { contains: search } } },
+            ],
+          }
+        : undefined,
       include: {
         roles: { include: { role: true } },
         programs: { include: { program: true } },
@@ -300,6 +319,10 @@ export class UsersService {
       }
     }
 
+    if (Array.isArray(dto.userGroups)) {
+      data.userGroups = dto.userGroups
+    }
+
     // 5) Profile (update only provided fields; create if not exists)
     if (dto.profile) {
       const profileUpdate: any = {}
@@ -340,6 +363,7 @@ export class UsersService {
         password: dto.password, // send plain only if changed (some external systems need plain)
         roleNames: Array.isArray(dto.roles) ? dto.roles : undefined,
         facilityCodes: Array.isArray(dto.facilities) ? dto.facilities : undefined,
+        userGroups: Array.isArray(dto.userGroups) ? dto.userGroups : undefined,
         profile: dto.profile ? dto.profile : undefined,
       })
     
