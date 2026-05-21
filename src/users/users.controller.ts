@@ -48,6 +48,16 @@ export class UsersController {
     return this.usersService.getAllUsers(searchString);
   }
 
+  @Get('check-username/:username')
+  async checkUsername(@Param('username') username: string) {
+    const exists = await this.usersService.usernameExists(username);
+    return {
+      username,
+      available: !exists,
+      exists,
+    };
+  }
+
   // -----------------------------
   // GET USER BY ID
   // -----------------------------
@@ -165,13 +175,4 @@ export class UsersController {
     return this.usersService.deleteUser(+id);
   }
 
-  @Get('check-username/:username')
-  async checkUsername(@Param('username') username: string) {
-    const exists = await this.usersService.usernameExists(username);
-    return {
-      username,
-      available: !exists,
-      exists,
-    };
-  }
 }
