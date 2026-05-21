@@ -10,7 +10,11 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
 
   app.enableCors({
-    origin: '*', // allow all
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization'],
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
   });
 
   // 1️⃣ Configure Swagger
