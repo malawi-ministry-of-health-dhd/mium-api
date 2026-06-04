@@ -360,21 +360,28 @@ export class AppController {
   <footer>© 2025 LUKE International · MAHIS</footer>
 
   <script>
-    // ── Logo — loaded via API request ──────────────────────────
-    fetch('/api/logo')
-      .then(function (res) {
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        return res.blob();
-      })
-      .then(function (blob) {
-        var url = URL.createObjectURL(blob);
-        var img = document.getElementById('mium-logo');
-        img.src = url;
-        img.onload = function () { URL.revokeObjectURL(url); };
-      })
-      .catch(function (err) {
-        console.warn('Logo fetch failed:', err);
-      });
+    // ── Logo — tries /api/logo then falls back to /memis2/api/logo ──
+    var logoPaths = ['/api/logo', '/memis2/api/logo'];
+    (function tryNext(paths) {
+      if (!paths.length) { console.warn('Logo: all paths exhausted'); return; }
+      var path = paths[0];
+      fetch(path)
+        .then(function (res) {
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          return res.blob();
+        })
+        .then(function (blob) {
+          var url = URL.createObjectURL(blob);
+          var img = document.getElementById('mium-logo');
+          img.src = url;
+          img.onload = function () { URL.revokeObjectURL(url); };
+          console.info('Logo loaded from:', path);
+        })
+        .catch(function (err) {
+          console.warn('Logo fetch failed for ' + path + ':', err.message, '— trying next');
+          tryNext(paths.slice(1));
+        });
+    })(logoPaths);
 
     (function () {
       // ── Theme ──────────────────────────────────────────────
