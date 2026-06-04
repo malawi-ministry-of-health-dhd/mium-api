@@ -1,8 +1,17 @@
 import { Controller, Get, Res } from '@nestjs/common';
 import express from 'express';
+import { join } from 'path';
 
 @Controller()
 export class AppController {
+  @Get('logo')
+  getLogo(@Res() res: express.Response) {
+    const logoPath = join(__dirname, '..', '..', 'public', 'muim_logo.png');
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.sendFile(logoPath);
+  }
+
   @Get()
   getLanding(@Res() res: express.Response) {
     const html = `<!DOCTYPE html>
@@ -312,7 +321,7 @@ export class AppController {
   </button>
 
   <div class="logo-panel">
-    <img src="/muim_logo.png" alt="MIUM Logo">
+    <img id="mium-logo" alt="MIUM Logo">
     <span class="logo-label">MIUM Platform</span>
     <span class="panel-version">v1.0</span>
   </div>
@@ -351,6 +360,29 @@ export class AppController {
   <footer>© 2025 LUKE International · MAHIS</footer>
 
   <script>
+    // ── Logo — tries /api/logo then falls back to /memis2/api/logo ──
+    var logoPaths = ['/api/logo', '/memis2/api/logo'];
+    (function tryNext(paths) {
+      if (!paths.length) { console.warn('Logo: all paths exhausted'); return; }
+      var path = paths[0];
+      fetch(path)
+        .then(function (res) {
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          return res.blob();
+        })
+        .then(function (blob) {
+          var url = URL.createObjectURL(blob);
+          var img = document.getElementById('mium-logo');
+          img.src = url;
+          img.onload = function () { URL.revokeObjectURL(url); };
+          console.info('Logo loaded from:', path);
+        })
+        .catch(function (err) {
+          console.warn('Logo fetch failed for ' + path + ':', err.message, '— trying next');
+          tryNext(paths.slice(1));
+        });
+    })(logoPaths);
+
     (function () {
       // ── Theme ──────────────────────────────────────────────
       var html   = document.documentElement;
