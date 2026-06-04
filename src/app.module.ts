@@ -1,4 +1,5 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
+import { WinstonModule } from 'nest-winston';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
@@ -8,9 +9,12 @@ import { ProgramsModule } from './programs/programs.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RolesModule } from './role/roles.module';
 import { FacilityModule } from './facility/facility.module';
+import { HttpLoggerMiddleware } from './common/middleware/http-logger.middleware';
+import { winstonConfig } from './logger/winston.config';
 
 @Module({
   imports: [
+    WinstonModule.forRoot(winstonConfig),
     AuthModule,
     UsersModule,
     ProgramsModule,
@@ -22,4 +26,8 @@ import { FacilityModule } from './facility/facility.module';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(HttpLoggerMiddleware).forRoutes('*');
+  }
+}

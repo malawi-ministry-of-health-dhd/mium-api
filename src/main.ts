@@ -3,9 +3,15 @@ import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { join } from 'path';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    bufferLogs: true,
+  });
+
+  // Use Winston as the NestJS logger (replaces built-in console logger)
+  app.useLogger(app.get(WINSTON_MODULE_NEST_PROVIDER));
 
   app.setGlobalPrefix('api');
 
@@ -17,25 +23,24 @@ async function bootstrap() {
     optionsSuccessStatus: 204,
   });
 
-  // 1️⃣ Configure Swagger
   const config = new DocumentBuilder()
     .setTitle('MAHIS integrated User Management(MIUM) Auth API')
     .setDescription(
       'API documentation for NestJS app with Prisma, JWT, Roles, Programs',
     )
     .setVersion('1.0')
-    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }) // JWT auth
+    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' })
     .build();
 
-  // Serve static files
   app.useStaticAssets(join(__dirname, '..', 'public'));
 
-  // 2️⃣ Create document
   const document = SwaggerModule.createDocument(app, config);
-
-  // 3️⃣ Setup Swagger UI endpoint
   SwaggerModule.setup('api/docs', app, document);
 
-  await app.listen(process.env.PORT ?? 3000);
+  const port = process.env.PORT ?? 3000;
+  await app.listen(port);
+
+  const logger = app.get(WINSTON_MODULE_NEST_PROVIDER);
+  logger.log(`Application running on port ${port}`, 'Bootstrap');
 }
 bootstrap();
