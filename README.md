@@ -1,34 +1,79 @@
 <p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
+  <img src="./public/muim_logo.png" width="200" alt="MIUM Logo" />
 </p>
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+<h1 align="center">MIUM API</h1>
+<p align="center">MAHIS Integrated User Management — central identity &amp; access layer for the MAHIS ecosystem</p>
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
+<p align="center">
+  <img src="https://img.shields.io/badge/NestJS-11-E0234E?logo=nestjs&logoColor=white" alt="NestJS" />
+  <img src="https://img.shields.io/badge/Prisma-6-2D3748?logo=prisma&logoColor=white" alt="Prisma" />
+  <img src="https://img.shields.io/badge/Auth-JWT-000000?logo=jsonwebtokens&logoColor=white" alt="JWT" />
+  <img src="https://img.shields.io/badge/DB-MySQL-4479A1?logo=mysql&logoColor=white" alt="MySQL" />
 </p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
 
-## Description
+## Overview
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+**MIUM** (MAHIS Integrated User Management) is the central identity and access
+management API for the MAHIS ecosystem. It provides a single, trusted source of
+user data for every connected health information system, handling authentication,
+authorization and the assignment of users to roles, programs and facilities.
+
+It also synchronises user data with **MEMIS**, so user groups and identities can
+be shared across systems.
+
+### Key features
+
+- **JWT-secured authentication** & session management
+- **Role-based access control** (RBAC) via guards and a `@Roles()` decorator
+- Assignment of users to **roles**, **programs** and **facilities**
+- **MEMIS** user-group synchronisation
+- Structured **audit & HTTP request logging** (Winston, with daily-rotated files)
+- Interactive **Swagger** API documentation
+- A branded landing page served at the root
+
+## Tech stack
+
+| Layer            | Technology                                    |
+| ---------------- | --------------------------------------------- |
+| Framework        | [NestJS 11](https://nestjs.com/)              |
+| Language         | TypeScript                                    |
+| ORM / Database   | [Prisma 6](https://www.prisma.io/) + MySQL    |
+| Auth             | Passport (`passport-jwt`, `passport-local`), `@nestjs/jwt`, bcrypt |
+| Docs             | `@nestjs/swagger` (Swagger UI)                |
+| Logging          | Winston + `nest-winston` + daily rotate file  |
 
 ## Project setup
 
 ```bash
 $ npm install
+```
+
+Create a `.env` file (see `.env.example`):
+
+```env
+DATABASE_URL="mysql://username:password@localhost:3306/mium"
+PORT=4000
+
+# MEMIS integration
+MEMIS_BASE_URL="https://host:port/api"
+MEMIS_USERNAME=username
+MEMIS_PASSWORD=password
+MEMIS_TIMEOUT=10000
+
+# Encryption key
+KEY=secretkey
+```
+
+### Database
+
+```bash
+# apply migrations
+$ npx prisma migrate deploy
+
+# seed data
+$ npm run prisma:seed-admin-user
+$ npm run prisma:seed-facilities-online   # or: prisma:seed-facilities-local
 ```
 
 ## Compile and run the project
@@ -44,6 +89,78 @@ $ npm run start:dev
 $ npm run start:prod
 ```
 
+On startup the app logs its local, network and docs URLs. All routes are served
+under the global `/api` prefix.
+
+- Landing page — `http://localhost:<PORT>/api`
+- Swagger docs — `http://localhost:<PORT>/api/docs`
+
+## API surface
+
+All endpoints are prefixed with `/api`. Routes marked 🔒 require a JWT bearer
+token; those marked 👑 additionally require the `ADMIN` role.
+
+### Auth — `/api/auth`
+| Method | Path        | Access | Description                     |
+| ------ | ----------- | ------ | ------------------------------- |
+| POST   | `/login`    | —      | Authenticate and receive a JWT  |
+| POST   | `/register` | —      | Register a new user             |
+| POST   | `/profile`  | 🔒     | Get the authenticated profile   |
+
+### Users — `/api/users`
+| Method | Path                        | Access | Description                    |
+| ------ | --------------------------- | ------ | ------------------------------ |
+| GET    | `/`                         | 👑     | List users                    |
+| GET    | `/check-username/:username` | —      | Check username availability    |
+| GET    | `/:id`                      | 🔒     | Get a user                     |
+| POST   | `/register`                 | —      | Register a user                |
+| POST   | `/assign-roles/:userId`     | 👑     | Assign roles to a user         |
+| POST   | `/assign-programs/:userId`  | 👑     | Assign programs to a user      |
+| POST   | `/assign-facilities/:userId`| 👑     | Assign facilities to a user    |
+| PUT    | `/:id`                      | 🔒     | Update a user                  |
+| DELETE | `/:id`                      | 👑     | Delete a user                  |
+
+### Roles — `/api/roles`
+| Method | Path   | Access | Description   |
+| ------ | ------ | ------ | ------------- |
+| POST   | `/`    | 👑     | Create a role |
+| GET    | `/`    | —      | List roles    |
+| GET    | `/:id` | 🔒     | Get a role    |
+| PUT    | `/:id` | 👑     | Update a role |
+| DELETE | `/:id` | 👑     | Delete a role |
+
+### Programs — `/api/programs`
+| Method | Path             | Access | Description                  |
+| ------ | ---------------- | ------ | ---------------------------- |
+| POST   | `/`              | 👑     | Create a program             |
+| GET    | `/`              | —      | List programs                |
+| GET    | `/:id`           | —      | Get a program                |
+| PUT    | `/:id`           | 👑     | Update a program             |
+| DELETE | `/:id`           | 👑     | Delete a program             |
+| POST   | `/assign/:userId`| 👑     | Assign a program to a user   |
+| GET    | `/user/:userId`  | —      | List a user's programs       |
+
+### Facilities — `/api/facilities`
+| Method | Path   | Access | Description       |
+| ------ | ------ | ------ | ----------------- |
+| POST   | `/`    | 👑     | Create a facility |
+| GET    | `/`    | 🔒     | List facilities   |
+| GET    | `/:id` | 🔒     | Get a facility    |
+| PUT    | `/:id` | 👑     | Update a facility |
+| DELETE | `/:id` | 👑     | Delete a facility |
+
+### MEMIS — `/api/memis`
+| Method | Path                   | Access | Description                     |
+| ------ | ---------------------- | ------ | ------------------------------- |
+| GET    | `/user-groups`         | 👑     | Fetch MEMIS user groups         |
+| GET    | `/user-groups/user-ids`| 👑     | Fetch user IDs for user groups  |
+
+## Data model
+
+Prisma schema (`prisma/schema.prisma`) defines: `User`, `UserProfile`, `Role`,
+`Program`, `Facility`, and the join tables `UserRole`, `UserProgram` and
+`UserFacility`.
+
 ## Run tests
 
 ```bash
@@ -57,51 +174,6 @@ $ npm run test:e2e
 $ npm run test:cov
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
 ## License
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
-
-# run migration
-
-- npx prisma migrate deploy
-
-# seed
-
-- npm run prisma:seed-admin-user
-- npm run prisma:seed-facilities-online
+UNLICENSED — © LUKE International · MAHIS
