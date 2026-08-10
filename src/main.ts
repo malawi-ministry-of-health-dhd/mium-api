@@ -4,6 +4,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { join } from 'path';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
+import { MEMIS_AVAILABLE_HEADER } from './memis/memis.controller';
 import * as os from 'os';
 
 function getLocalIp(): string {
@@ -31,6 +32,9 @@ async function bootstrap() {
     origin: '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization'],
+    // Without this the browser hides the header from JS on cross-origin reads,
+    // so the client could not tell a degraded response from a genuinely empty one.
+    exposedHeaders: [MEMIS_AVAILABLE_HEADER],
     preflightContinue: false,
     optionsSuccessStatus: 204,
   });

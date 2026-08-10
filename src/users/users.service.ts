@@ -1,5 +1,13 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadGatewayException,
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { MemisUnavailableError } from '../memis/memis-client.service';
 import { MemisUserService } from '../memis/memis.users.service';
 import type { Prisma } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
@@ -20,6 +28,8 @@ interface UserGroupInput {
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
+
   constructor(
     private prisma: PrismaService,
     private memisUserService: MemisUserService,
@@ -124,16 +134,36 @@ export class UsersService {
       facilitiesData = facilities.map((f) => ({ facilityId: f.id }));
     }
 
-    if (
-      !(await this.memisUserService.createMemisUser({
+    // MEMIS must accept the user before anything is persisted locally: a MEMIS
+    // outage aborts the whole operation rather than leaving the two systems out
+    // of sync.
+    let memisCreated: boolean;
+    try {
+      memisCreated = await this.memisUserService.createMemisUser({
         password,
         username,
         roleNames,
         facilityCodes,
         profile,
         userGroups,
-      }))
-    ){return;}
+      });
+    } catch (error) {
+      if (error instanceof MemisUnavailableError) {
+        throw new ServiceUnavailableException(
+          'MEMIS is unavailable — the user was not created. Please try again later.',
+        );
+      }
+      throw error;
+    }
+
+    // Previously this returned undefined, which the controller sent as HTTP 201
+    // with an empty body — the client then failed parsing the response instead of
+    // showing why the user was not created.
+    if (!memisCreated) {
+      throw new BadGatewayException(
+        'MEMIS rejected the user — the user was not created. Check the facility code and roles.',
+      );
+    }
 
     // Create user
    const createdUser = await this.prisma.user.create({
@@ -359,14 +389,35 @@ export class UsersService {
     // If your memis service supports an update method, use it.
     // If not, adapt to your actual API.
 
-      await this.memisUserService.updateMemisUser(existing.username, {
-        password: dto.password, // send plain only if changed (some external systems need plain)
-        roleNames: Array.isArray(dto.roles) ? dto.roles : undefined,
-        facilityCodes: Array.isArray(dto.facilities) ? dto.facilities : undefined,
-        userGroups: Array.isArray(dto.userGroups) ? dto.userGroups : undefined,
-        profile: dto.profile ? dto.profile : undefined,
-      })
-    
+      // MEMIS is synced first and must be reachable: if it is down the local
+      // update is abandoned too, so the two systems never diverge.
+      try {
+        const memisUpdated = await this.memisUserService.updateMemisUser(
+          existing.username,
+          {
+            password: dto.password, // send plain only if changed (some external systems need plain)
+            roleNames: Array.isArray(dto.roles) ? dto.roles : undefined,
+            facilityCodes: Array.isArray(dto.facilities) ? dto.facilities : undefined,
+            userGroups: Array.isArray(dto.userGroups) ? dto.userGroups : undefined,
+            profile: dto.profile ? dto.profile : undefined,
+          },
+        )
+
+        if (!memisUpdated) {
+          this.logger.warn(
+            `MEMIS did not update "${existing.username}"; applying the local update anyway`,
+          )
+        }
+      } catch (error) {
+        if (error instanceof MemisUnavailableError) {
+          throw new ServiceUnavailableException(
+            'MEMIS is unavailable — the user was not updated. Please try again later.',
+          )
+        }
+        throw error
+      }
+
+
     // -----------------------
     // Update user in DB and return full object
     // -----------------------

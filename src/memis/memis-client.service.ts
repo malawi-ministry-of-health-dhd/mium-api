@@ -1,6 +1,25 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { BaseHttpClientService } from '../services/base-http-client.service';
-import { AxiosResponse } from 'axios';
+import axios, { AxiosResponse } from 'axios';
+
+/**
+ * Raised when MEMIS/DHIS2 could not be reached at all (DNS, refused connection,
+ * timeout). Distinct from a live MEMIS answering with an error, so callers can
+ * decide between degrading and refusing the operation outright.
+ */
+export class MemisUnavailableError extends Error {
+  constructor(readonly reason: string) {
+    super(`MEMIS is unavailable: ${reason}`);
+    this.name = 'MemisUnavailableError';
+  }
+}
+
+// No HTTP response at all means we never spoke to MEMIS — as opposed to MEMIS
+// replying 4xx/5xx, which is a live server rejecting the request.
+function connectivityFailure(error: unknown): string | null {
+  if (!axios.isAxiosError(error) || error.response) return null;
+  return error.code ?? error.message;
+}
 
 // --- Interfaces for strong typing ---
 export interface MemisResponse {
@@ -49,6 +68,30 @@ export class MemisClientService extends BaseHttpClientService {
     super('MEMIS'); // uses env vars like MEMIS_BASE_URL
   }
 
+  /**
+   * Wraps a MEMIS read so it never surfaces as a bare HTTP 500. Unreachable
+   * MEMIS raises MemisUnavailableError; a live MEMIS returning an error falls
+   * back to an empty result, matching the postJson/putJson pattern below.
+   */
+  private async read<T>(
+    label: string,
+    request: () => Promise<T>,
+    fallback: T,
+  ): Promise<T> {
+    try {
+      return await request();
+    } catch (error) {
+      const unreachable = connectivityFailure(error);
+      if (unreachable) {
+        this.logger.error(`MEMIS unreachable during ${label}: ${unreachable}`);
+        throw new MemisUnavailableError(unreachable);
+      }
+
+      this.logger.error(`Failed to ${label} from MEMIS: ${error}`);
+      return fallback;
+    }
+  }
+
   // ✅ typed: returns MemisResponse instead of any
   async postJson(url: string, obj: object): Promise<MemisResponse | null> {
     try {
@@ -79,24 +122,46 @@ export class MemisClientService extends BaseHttpClientService {
 
   // ✅ typed: returns array of OrganisationUnit
   async getFacilityCode(facilityCodes: string[]) {
-    const res: AxiosResponse<{ organisationUnits: OrganisationUnit[] }> =
-      await this.axiosInstance.get(
-        `/organisationUnits?filter=code:eq:${facilityCodes[0]}&fields=id`,
-      );
+    return this.read(
+      'resolve facility code',
+      async () => {
+        const res: AxiosResponse<{ organisationUnits: OrganisationUnit[] }> =
+          await this.axiosInstance.get(
+            `/organisationUnits?filter=code:eq:${facilityCodes[0]}&fields=id`,
+          );
 
-    return res.data.organisationUnits;
+        return res.data.organisationUnits ?? [];
+      },
+      [] as OrganisationUnit[],
+    );
   }
   async findUserByUsername(username: string) {
-    const res: AxiosResponse<{ users: MemisUser[] }> =
-      await this.axiosInstance.get(
-        `/users?filter=username:eq:${username}&fields=id,username,displayName`,
-      );
+    return this.read(
+      'look up user by username',
+      async () => {
+        const res: AxiosResponse<{ users: MemisUser[] }> =
+          await this.axiosInstance.get(
+            `/users?filter=username:eq:${username}&fields=id,username,displayName`,
+          );
 
-    return res.data.users;
+        return res.data.users ?? [];
+      },
+      [] as MemisUser[],
+    );
   }
 
   // ✅ typed: always returns { id: string }[]
   async getOrCreateUserRoles(roleNames: string[]): Promise<{ id: string }[]> {
+    return this.read(
+      'resolve user roles',
+      () => this.fetchOrCreateUserRoles(roleNames),
+      [] as { id: string }[],
+    );
+  }
+
+  private async fetchOrCreateUserRoles(
+    roleNames: string[],
+  ): Promise<{ id: string }[]> {
     const roleIds: { id: string }[] = [];
 
     // 1. Fetch all existing roles once
@@ -141,20 +206,32 @@ export class MemisClientService extends BaseHttpClientService {
   }
 
   async getUserRoles(): Promise<MemisRole[]> {
-    const allRolesRes: AxiosResponse<{ userRoles: UserRole[] }> =
-      await this.axiosInstance.get(`/userRoles`);
-    return allRolesRes.data.userRoles;
+    return this.read(
+      'fetch user roles',
+      async () => {
+        const allRolesRes: AxiosResponse<{ userRoles: UserRole[] }> =
+          await this.axiosInstance.get(`/userRoles`);
+        return allRolesRes.data.userRoles ?? [];
+      },
+      [] as MemisRole[],
+    );
   }
 
   async getUserGroups(): Promise<MemisUserGroup[]> {
-    const userGroupsRes: AxiosResponse<{ userGroups: MemisUserGroup[] }> =
-      await this.axiosInstance.get(`/userGroups`, {
-        params: {
-          fields: 'id,name,displayName',
-        },
-      });
+    return this.read(
+      'fetch user groups',
+      async () => {
+        const userGroupsRes: AxiosResponse<{ userGroups: MemisUserGroup[] }> =
+          await this.axiosInstance.get(`/userGroups`, {
+            params: {
+              fields: 'id,name,displayName',
+            },
+          });
 
-    return userGroupsRes.data.userGroups ?? [];
+        return userGroupsRes.data.userGroups ?? [];
+      },
+      [] as MemisUserGroup[],
+    );
   }
 
   async getUserIdsFromUserGroups(): Promise<string[]> {
