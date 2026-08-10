@@ -35,7 +35,12 @@ export class MemisUserService {
     if (!facilityCodes) return false;
 
     const facilityCode = await this.memisClient.getFacilityCode(facilityCodes);
-    if (!facilityCode) return false;
+    if (!facilityCode?.length) {
+      this.logger.warn(
+        `createMemisUser: no MEMIS facility matched code="${facilityCodes[0]}"`,
+      );
+      return false;
+    }
 
     const userRoles: { id: string }[] =
       await this.memisClient.getOrCreateUserRoles(roleNames);
@@ -113,7 +118,12 @@ export class MemisUserService {
       const facilityCode = await this.memisClient.getFacilityCode(
         obj.facilityCodes,
       );
-      if (!facilityCode) return false; // or skip; your choice
+      if (!facilityCode?.length) {
+        this.logger.warn(
+          `updateMemisUser: no MEMIS facility matched code="${obj.facilityCodes[0]}"`,
+        );
+        return false;
+      }
       payload.organisationUnits = facilityCode;
     }
 
