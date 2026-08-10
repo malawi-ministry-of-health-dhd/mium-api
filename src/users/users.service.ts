@@ -1,12 +1,17 @@
 import {
   BadGatewayException,
   BadRequestException,
+  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  PROTECTED_USERNAME,
+  isProtectedAccount,
+} from '../common/protected-accounts';
 import { MemisUnavailableError } from '../memis/memis-client.service';
 import { MemisUserService } from '../memis/memis.users.service';
 import type { Prisma } from '@prisma/client';
@@ -37,6 +42,28 @@ export class UsersService {
     private programsService: ProgramsService,
   ) {}
 
+  /**
+   * Refuses any API mutation aimed at the MIUM service account. Its password is
+   * set only from the server CLI, so a stolen or over-privileged admin token
+   * cannot take over the credentials MaHIS-Core depends on.
+   */
+  private refuseIfProtected(username?: string | null) {
+    if (isProtectedAccount(username)) {
+      throw new ForbiddenException(
+        `The "${PROTECTED_USERNAME}" account is managed by the server administrator and cannot be modified through the API. ` +
+          'Run "npm run prisma:set-admin-password" on the server instead.',
+      );
+    }
+  }
+
+  private async refuseIfProtectedId(userId: number) {
+    const target = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { username: true },
+    });
+    this.refuseIfProtected(target?.username);
+  }
+
   // Find user by username
   async findOne(username: string) {
     return this.prisma.user.findUnique({
@@ -61,6 +88,8 @@ export class UsersService {
     profile?: UserProfileInput,
     userGroups?: UserGroupInput[],
   ) {
+    this.refuseIfProtected(username);
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
  
@@ -235,6 +264,8 @@ export class UsersService {
 
   // Assign roles to user
   async assignRolesToUser(userId: number, roleNames: string[]) {
+    await this.refuseIfProtectedId(userId);
+
     await this.prisma.userRole.deleteMany({ where: { userId } });
     const roles = await this.prisma.role.findMany({
       where: { name: { in: roleNames } },
@@ -245,6 +276,8 @@ export class UsersService {
 
   // Assign programs to user
   async assignProgramsToUser(userId: number, programNames: string[]) {
+    await this.refuseIfProtectedId(userId);
+
     await this.prisma.userProgram.deleteMany({ where: { userId } });
     const programs = await this.prisma.program.findMany({
       where: { name: { in: programNames } },
@@ -255,6 +288,8 @@ export class UsersService {
 
   // Delete user
   async deleteUser(id: number) {
+    await this.refuseIfProtectedId(id);
+
     return this.prisma.user.delete({ where: { id } });
   }
 
@@ -266,6 +301,8 @@ export class UsersService {
       include: { profile: true },
     })
     if (!existing) throw new NotFoundException('User not found')
+
+    this.refuseIfProtected(existing.username)
 
     // -----------------------
     // Build user update data only for provided props
@@ -435,6 +472,8 @@ export class UsersService {
 
   // Assign facilities to user
   async assignFacilitiesToUser(userId: number, facilityIds: number[]) {
+    await this.refuseIfProtectedId(userId);
+
     await this.prisma.userFacility.deleteMany({ where: { userId } });
 
     const assignments = facilityIds.map((facilityId) => ({
