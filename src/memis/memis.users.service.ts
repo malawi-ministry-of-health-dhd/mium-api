@@ -53,6 +53,8 @@ export class MemisUserService {
       userRoles,
       userGroups: userGroups ?? [],
       organisationUnits: facilityCode,
+      dataViewOrganisationUnits: facilityCode,
+      teiSearchOrganisationUnits: facilityCode,
     };
 
     this.logger.log(`Created ${JSON.stringify(user)} ========== in MEMIS`);
@@ -68,7 +70,7 @@ export class MemisUserService {
   /**
    * Update MEMIS user:
    * - Only include fields that are provided.
-   * - Only compute organisationUnits if facilityCodes is provided.
+   * - Only compute the organisation unit fields if facilityCodes is provided.
    * - Only compute userRoles if roleNames is provided.
    * - Only set firstName/surname if profile is provided and fields exist.
    */
@@ -125,6 +127,8 @@ export class MemisUserService {
         return false;
       }
       payload.organisationUnits = facilityCode;
+      payload.dataViewOrganisationUnits = facilityCode;
+      payload.teiSearchOrganisationUnits = facilityCode;
     }
 
     if (Array.isArray(obj.userGroups)) {
